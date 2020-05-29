@@ -1,17 +1,27 @@
 package com.deeosoft.samicsub.Services;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.telephony.SmsManager;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
+import com.deeosoft.samicsub.MainActivity;
 import com.deeosoft.samicsub.Model.DataModel;
 import com.deeosoft.samicsub.Model.ResponseModel;
 import com.deeosoft.samicsub.Model.SMSModel;
+import com.deeosoft.samicsub.R;
 import com.deeosoft.samicsub.tool.UnsafeOkHttpClient;
 
 import okhttp3.OkHttpClient;
@@ -31,6 +41,7 @@ public class ListenForNewSMSData extends Service {
     String status,message;
     ConnectionInterface service;
     private volatile boolean destroy = false;
+    PowerManager.WakeLock wakeLock;
 
     @Override
     public void onCreate() {
@@ -44,6 +55,8 @@ public class ListenForNewSMSData extends Service {
                 .build();
 
         service = retrofit.create(ConnectionInterface.class);
+
+        this.startForeground(1,CreateNotification());
     }
 
     /**
@@ -74,6 +87,11 @@ public class ListenForNewSMSData extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        wakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE))
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "EndlessService::lock");
+
+        wakeLock.acquire();
+
         getDataAPI();
         return super.onStartCommand(intent, flags, startId);
     }
@@ -167,6 +185,54 @@ public class ListenForNewSMSData extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        stopForeground(true);
+        try {
+            if (wakeLock.isHeld()){
+                wakeLock.release();
+            }
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
         destroy = true;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT_WATCH)
+    public Notification CreateNotification(){
+        final String notificationChannelId = "SAMIC SUB SERVICE CHANNEL";
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationChannel channel = new NotificationChannel(notificationChannelId,
+                    "Samic Sub Notification Channel",
+                    android.app.NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Samic Sub Running");
+            channel.enableLights(true);
+            channel.setLightColor(Color.RED);
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        Intent notificationIntent  = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+        builder  =  new Notification.Builder(
+                this,
+                notificationChannelId);
+        }
+        else {
+            builder = new Notification.Builder(this);
+        }
+
+        return builder
+                .setContentTitle("Samic Sub Service")
+                .setContentText("Samic Sub Service is Running...")
+                .setContentIntent(pendingIntent)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setTicker("Samic Sub")
+                .setPriority(Notification.PRIORITY_HIGH) // for under android 26 compatibility
+                .build();
     }
 }

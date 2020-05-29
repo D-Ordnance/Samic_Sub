@@ -19,6 +19,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.deeosoft.samicsub.Services.ListenForNewSMSData;
 import com.google.android.material.snackbar.Snackbar;
@@ -42,6 +43,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        ((TextView)findViewById(R.id.toolBarTitle)).setText("SAMIC SMS SERVICE");
 
         img_chip = findViewById(R.id.img_chip);
         start_listen_service = findViewById(R.id.startListenService);

@@ -17,6 +17,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -40,6 +41,8 @@ public class USSDData extends AppCompatActivity implements View.OnClickListener 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        
+        ((TextView)findViewById(R.id.toolBarTitle)).setText("SAMIC DATA USSD SERVICE");
 
         img_chip = findViewById(R.id.img_chip);
         start_listen_service = findViewById(R.id.startListenService);
@@ -113,6 +116,10 @@ public class USSDData extends AppCompatActivity implements View.OnClickListener 
         img_chip.startAnimation(animation_first);
         appPref.edit().putBoolean("DATA_SERVICE_RUNNING",true).apply();
         Intent startIntent = new Intent(this, ListenForNewUSSDData.class);
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            startForegroundService(startIntent);
+            return;
+        }
         startService(startIntent);
     }
 
