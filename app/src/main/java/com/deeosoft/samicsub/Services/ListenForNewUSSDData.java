@@ -20,6 +20,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 
+import com.deeosoft.samicsub.Home;
 import com.deeosoft.samicsub.MainActivity;
 import com.deeosoft.samicsub.Model.DataModel;
 import com.deeosoft.samicsub.Model.ResponseModel;
@@ -233,7 +234,7 @@ public class ListenForNewUSSDData extends Service {
             notificationManager.createNotificationChannel(channel);
         }
 
-        Intent notificationIntent  = new Intent(this, MainActivity.class);
+        Intent notificationIntent  = new Intent(this, Home.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
         Notification.Builder builder;

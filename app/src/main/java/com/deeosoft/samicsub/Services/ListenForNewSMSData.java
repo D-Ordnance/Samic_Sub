@@ -17,12 +17,15 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import com.deeosoft.samicsub.Home;
 import com.deeosoft.samicsub.MainActivity;
 import com.deeosoft.samicsub.Model.DataModel;
 import com.deeosoft.samicsub.Model.ResponseModel;
 import com.deeosoft.samicsub.Model.SMSModel;
 import com.deeosoft.samicsub.R;
 import com.deeosoft.samicsub.tool.UnsafeOkHttpClient;
+
+import java.util.ArrayList;
 
 import okhttp3.OkHttpClient;
 import retrofit2.Call;
@@ -43,6 +46,7 @@ public class ListenForNewSMSData extends Service {
     private volatile boolean destroy = false;
     PowerManager.WakeLock wakeLock;
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT_WATCH)
     @Override
     public void onCreate() {
         super.onCreate();
@@ -157,7 +161,9 @@ public class ListenForNewSMSData extends Service {
     private void sendSMS(String phone_number, String message){
         Log.d("sms","sent");
         SmsManager smsManager = SmsManager.getDefault();
-        smsManager.sendTextMessage(phone_number,null,message,null,null);
+        ArrayList<String> aMessage = smsManager.divideMessage(message);
+        smsManager.sendMultipartTextMessage(phone_number,"",aMessage,null,null);
+//        smsManager.sendTextMessage(phone_number,null,message,null,null);
     }
 
 
@@ -213,7 +219,7 @@ public class ListenForNewSMSData extends Service {
             notificationManager.createNotificationChannel(channel);
         }
 
-        Intent notificationIntent  = new Intent(this, MainActivity.class);
+        Intent notificationIntent  = new Intent(this, Home.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
         Notification.Builder builder;
