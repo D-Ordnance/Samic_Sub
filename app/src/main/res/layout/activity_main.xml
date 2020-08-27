@@ -6,60 +6,60 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity"
     android:background="@color/colorPrimary">
-    <androidx.appcompat.widget.Toolbar
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:id="@+id/toolBar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+  <androidx.appcompat.widget.Toolbar
+      android:layout_width="match_parent"
+      android:layout_height="?attr/actionBarSize"
+      android:id="@+id/toolBar"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/toolBarTitle"
-            android:text="Title"
-            android:textColor="@color/white"
-            android:textSize="20sp"
-            android:gravity="center"/>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/toolBarTitle"
+        android:text="Title"
+        android:textColor="@color/white"
+        android:textSize="20sp"
+        android:gravity="center"/>
 
-    </androidx.appcompat.widget.Toolbar>
+  </androidx.appcompat.widget.Toolbar>
 
-    <ImageView
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:id="@+id/img_chip"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_layout"
-        android:src="@drawable/ic_chip"
-        android:scaleType="center"/>
+  <ImageView
+      android:layout_width="0dp"
+      android:layout_height="0dp"
+      android:id="@+id/img_chip"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintBottom_toTopOf="@+id/bottom_layout"
+      android:src="@drawable/ic_chip"
+      android:scaleType="center"/>
 
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="70dp"
-        android:id="@+id/bottom_layout"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:background="@color/colorPrimary"
-        android:gravity="center">
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/startListenService"
-            android:layout_marginEnd="10dp"
-            android:text="@string/start_listen_service"
-            android:textColor="@color/colorPrimary"/>
+  <LinearLayout
+      android:layout_width="0dp"
+      android:layout_height="70dp"
+      android:id="@+id/bottom_layout"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintBottom_toBottomOf="parent"
+      android:background="@color/colorPrimary"
+      android:gravity="center">
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/startListenService"
+        android:layout_marginEnd="10dp"
+        android:text="@string/start_listen_service"
+        android:textColor="@color/colorPrimary"/>
 
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/stopListenService"
-            android:text="@string/stop_listen_service"
-            android:textColor="@color/colorPrimary"/>
-    </LinearLayout>
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/stopListenService"
+        android:text="@string/stop_listen_service"
+        android:textColor="@color/colorPrimary"/>
+  </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

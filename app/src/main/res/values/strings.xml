@@ -4,10 +4,20 @@
     <string name="stop_listen_service">Stop</string>
     <string name="samic_sub"><b>Samic</b>Sub</string>
     <string name="samic_sub_detail">Automate bulk sms and ussd code</string>
-    <string name="accessibility_service_description">Using this service for TunmiseApp to make USSD work without showing the dialog and reading the response from the dialog</string>
+    <string name="accessibility_service_description">Using this service for SamicSub to make USSD work without showing the dialog and reading the response from the dialog</string>
     <string name="sms">SMS</string>
     <string name="tap_to_continue">Tap to continue</string>
     <string name="ussd">USSD</string>
     <string name="data">Data</string>
     <string name="airtime">Airtime</string>
+    <string name="call">CALL</string>
+
+    <string-array name="networks">
+        <item>Select network to process</item>
+        <item>mtn sme and airtime</item>
+        <item>mtn gifting</item>
+        <item>airtel</item>
+        <item>glo</item>
+        <item>9mobile</item>
+    </string-array>
 </resources>

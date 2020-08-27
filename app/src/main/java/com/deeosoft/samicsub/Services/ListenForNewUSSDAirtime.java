@@ -10,11 +10,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -35,9 +41,12 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.Body;
+import retrofit2.http.Field;
+import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
+import retrofit2.http.Query;
 
 public class ListenForNewUSSDAirtime extends Service {
     private static final String TAG = "ListenForNewUSSDAirtime";
@@ -46,6 +55,7 @@ public class ListenForNewUSSDAirtime extends Service {
     ListenForNewUSSDAirtime.ConnectionInterface service;
     private volatile boolean destroy = false;
     PowerManager.WakeLock wakeLock;
+    String network;
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
@@ -54,65 +64,69 @@ public class ListenForNewUSSDAirtime extends Service {
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://superadmin.mtncug.com/api/")
+                .baseUrl("http://superadmin.samicsub.com/api/")
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
-
         service = retrofit.create(ListenForNewUSSDAirtime.ConnectionInterface.class);
-
         telephonyCallback = new TelephonyManager.UssdResponseCallback() {
-            /**
-             * Called when a USSD request has succeeded.  The {@code response} contains the USSD
-             * response received from the network.  The calling app can choose to either display the
-             * response to the user or perform some operation based on the response.
-             * <p>
-             * USSD responses are unstructured text and their content is determined by the mobile network
-             * operator.
-             *
-             * @param telephonyManager the TelephonyManager the callback is registered to.
-             * @param request          the USSD request sent to the mobile network.
-             * @param response         the response to the USSD request provided by the mobile network.
-             **/
             @Override
             public void onReceiveUssdResponse(TelephonyManager telephonyManager, String request, CharSequence response) {
                 super.onReceiveUssdResponse(telephonyManager, request, response);
                 Log.d(TAG, response.toString());
                 postDataAPI(transaction_id);
-                getDataAPI();
+            }
+            @Override
+            public void onReceiveUssdResponseFailed(TelephonyManager telephonyManager, String request, int failureCode) {
+                super.onReceiveUssdResponseFailed(telephonyManager, request, failureCode);
+                showStatus("Samic Request failure Code " + failureCode,0);
+                postDataAPI(transaction_id);
             }
         };
-
         this.startForeground(1,CreateNotification());
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void getDataAPI(){
-        if(!destroy) {
-            Call<ResponseModel> call = service.getAppData();
-            call.enqueue(new Callback<ResponseModel>() {
-                @Override
-                public void onResponse(Call<ResponseModel> call, Response<ResponseModel> response) {
-                    //dismiss progress indicator
-                    ResponseModel responseModel = response.body();
-                    status = "-1";
-                    if (response.body() != null) if (response.body().getStatus() != null)
-                        status = response.body().getStatus();
-                    if (status.equalsIgnoreCase("1")) {
-                        DataModelProcess(responseModel.getData());
-                    } else {
-                        Log.d(TAG, "onResponse: else");
-                        getDataAPI();
-                    }
-                    Log.d("GET_API Msg_Status()->", message + " " + status);
-                }
+        if(!network.contains("gifting")) {
+            if (isOnline()) {
+                if(!destroy) {
+                    network = network.contains("mtn") ? "mtn" : network;
+                    Call<ResponseModel> call = service.getAppData(network);
+                    call.enqueue(new Callback<ResponseModel>() {
+                        @Override
+                        public void onResponse(Call<ResponseModel> call, Response<ResponseModel> response) {
+                            //dismiss progress indicator
+                            ResponseModel responseModel = response.body();
+                            status = "-1";
+//                            if(response.body().getError() != null) showStatus("Reconnecting....",30000);
+                            if (response.body() != null) if (response.body().getStatus() != null)
+                                status = response.body().getStatus();
+                            if (status.equalsIgnoreCase("1")) {
+                                DataModelProcess(responseModel.getData());
+                            } else {
+                                Log.d(TAG, "onResponse: else");
+                                getDataAPI();
+                            }
+                            Log.d("GET_API Msg_Status()->", message + " " + status);
+                        }
 
-                @Override
-                public void onFailure(Call<ResponseModel> call, Throwable t) {
-                    //dismiss progress indicator
-                    //show reason for failure
-                    Log.e("get_Retrofit_Error", t.getMessage());
+                        @Override
+                        public void onFailure(Call<ResponseModel> call, Throwable t) {
+                            //dismiss progress indicator
+                            //show reason for failure
+                            Log.d(TAG, "GetAPI onFailure: " + t.getMessage());
+                            showStatus("Samic has lost network connection. trying to reconnect in 20 seconds. if it persist check your network connection."
+                                    , 20000);
+                        }
+                    });
                 }
-            });
+            } else {
+                showStatus("Samic has lost network connection. trying to reconnect in 20 seconds. if it persist check your network connection."
+                        , 20000);
+            }
+        }else{
+            showStatus("The network type is not supported for this transaction.",0);
         }
     }
 
@@ -121,6 +135,7 @@ public class ListenForNewUSSDAirtime extends Service {
             transaction_id = dataModel.getTransaction_id();
             ussd_message = dataModel.getUSSDString();
             Log.d("USSD=>",ussd_message);
+            showStatus("Samic airtime service now processing this ussd: " + ussd_message, 0);
             sendUSSD(ussd_message);
         }
     }
@@ -133,16 +148,21 @@ public class ListenForNewUSSDAirtime extends Service {
             telephonyManager.sendUssdRequest(ussd,telephonyCallback,null);
         }
     }
-    private void postDataAPI(String transaction_id){
+    private void postDataAPI(final String transaction_id){
         TransactionIdModel transactionIdModel = new TransactionIdModel(transaction_id);
-        Call<ResponseModel> call = service.PostAirTime(transactionIdModel);
+        Call<ResponseModel> call = service.postDataAPI(transactionIdModel);
         call.enqueue(new Callback<ResponseModel>() {
+            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
             public void onResponse(Call<ResponseModel> call, Response<ResponseModel> response) {
                 //check for the value of message and status to dictate the next move
                 Log.d("P_Msg and Status()->","here");
                 Log.d("POST_RESPONSE", response.raw().message());
-                if(response.body() != null) if(response.body().getStatus() != null) Log.d("POST_STATUS",response.body().getStatus());
+                if(response.body() != null)
+                    if(response.body().getStatus() != null){
+                        getDataAPI();
+                        Log.d("POST_STATUS",response.body().getStatus());
+                    }
             }
 
             @Override
@@ -150,47 +170,32 @@ public class ListenForNewUSSDAirtime extends Service {
                 //dismiss progress indicator
                 //show reason for failure
                 Log.e("post_Retrofit_Error",t.getMessage());
+                postDataAPI(transaction_id);
             }
         });
     }
 
     public interface ConnectionInterface {
         @GET("airtime")
-        Call<ResponseModel> getAppData();
+        Call<ResponseModel> getAppData(@Query("network") String network);
 
         @POST("airtime/done")
         @Headers("Accept: application/json")
-        Call<ResponseModel> PostAirTime(@Body TransactionIdModel body);
+        Call<ResponseModel> postDataAPI(@Body TransactionIdModel body);
     }
 
-    /**
-     * Return the communication channel to the service.  May return null if
-     * clients can not bind to the service.  The returned
-     * {@link IBinder} is usually for a complex interface
-     * that has been <a href="{@docRoot}guide/components/aidl.html">described using
-     * aidl</a>.
-     *
-     * <p><em>Note that unlike other application components, calls on to the
-     * IBinder interface returned here may not happen on the main thread
-     * of the process</em>.  More information about the main thread can be found in
-     * <a href="{@docRoot}guide/topics/fundamentals/processes-and-threads.html">Processes and
-     * Threads</a>.</p>
-     *
-     * @param intent The Intent that was used to bind to this service,
-     *               as given to {@link Context#bindService
-     *               Context.bindService}.  Note that any extras that were included with
-     *               the Intent at that point will <em>not</em> be seen here.
-     * @return Return an IBinder through which clients can call on to the
-     * service.
-     */
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if(intent != null){
+            network = intent.getStringExtra("NETWORK");
+        }
         wakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE))
                 .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "EndlessService::lock");
 
@@ -202,6 +207,7 @@ public class ListenForNewUSSDAirtime extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        Log.d(TAG, "onDestroy: here");
         stopForeground(true);
         try {
             if (wakeLock.isHeld()){
@@ -211,6 +217,45 @@ public class ListenForNewUSSDAirtime extends Service {
             ex.printStackTrace();
         }
         destroy = true;
+    }
+
+
+    public void showStatus(final String msg, long delay){
+        Handler toastHandler = new Handler(Looper.getMainLooper());
+        if(delay > 0) {
+            Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+            toastHandler.postDelayed(new Runnable() {
+                @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+                @Override
+                public void run() {
+                    getDataAPI();
+                }
+            }, delay);
+        }else{
+            toastHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public boolean isOnline(){
+        ConnectivityManager networkManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        boolean isWifi = false;
+        boolean isMobile = false;
+        for (Network network : networkManager.getAllNetworks()) {
+            NetworkInfo networkInfo = networkManager.getNetworkInfo(network);
+            if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                return isWifi |= networkInfo.isConnected();
+            }
+            if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
+                return isMobile |= networkInfo.isConnected();
+            }
+        }
+        return false;
     }
 
 

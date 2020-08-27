@@ -16,6 +16,10 @@ public class ResponseModel {
     @Expose
     private DataModel[] data;
 
+    @SerializedName("error")
+    @Expose
+    private String error;
+
     public String getMessage(){
         return this.message;
     }
@@ -42,5 +46,12 @@ public class ResponseModel {
 
     public void setData(DataModel[] data) {
         this.data = data;
+    }
+
+    public String getError() {
+        return this.error;
+    }
+    public void setError(String error) {
+        this.error = error;
     }
 }

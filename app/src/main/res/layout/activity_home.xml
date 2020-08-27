@@ -151,6 +151,27 @@
                 android:background="@color/colorText2"
                 android:id="@+id/btnData"/>
         </LinearLayout>
+
+        <Spinner
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/networkSpinner"
+            android:layout_marginTop="10dp"
+            android:drawSelectorOnTop="true"
+            android:padding="10dp"
+            android:background="#000000"
+            android:entries="@array/networks"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/sendUssd"
+            android:textSize="18sp"
+            android:textColor="@color/white"
+            android:layout_marginTop="10dp"
+            android:background="@color/colorAccent"
+            android:text="@string/call"
+            android:padding="10dp"/>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

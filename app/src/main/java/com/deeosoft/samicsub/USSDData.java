@@ -36,11 +36,15 @@ public class USSDData extends AppCompatActivity implements View.OnClickListener 
     SharedPreferences appPref;
 
     private final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 100;
+    String network;
     @TargetApi(Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        if(getIntent() != null){
+            network = getIntent().getStringExtra("NETWORK");
+        }
         
         ((TextView)findViewById(R.id.toolBarTitle)).setText("SAMIC DATA USSD SERVICE");
 
@@ -115,7 +119,7 @@ public class USSDData extends AppCompatActivity implements View.OnClickListener 
         animation_first = AnimationUtils.loadAnimation(this,R.anim.hyperspace_jump);
         img_chip.startAnimation(animation_first);
         appPref.edit().putBoolean("DATA_SERVICE_RUNNING",true).apply();
-        Intent startIntent = new Intent(this, ListenForNewUSSDData.class);
+        Intent startIntent = new Intent(this, ListenForNewUSSDData.class).putExtra("NETWORK", network);
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             startForegroundService(startIntent);
             return;

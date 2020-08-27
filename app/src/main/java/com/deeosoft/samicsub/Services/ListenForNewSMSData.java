@@ -34,6 +34,7 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.Body;
+import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
@@ -53,7 +54,7 @@ public class ListenForNewSMSData extends Service {
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://superadmin.mtncug.com/api/sms/")
+                .baseUrl("http://superadmin.samicsub.com/api/sms/")
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
@@ -63,26 +64,6 @@ public class ListenForNewSMSData extends Service {
         this.startForeground(1,CreateNotification());
     }
 
-    /**
-     * Return the communication channel to the service.  May return null if
-     * clients can not bind to the service.  The returned
-     * {@link IBinder} is usually for a complex interface
-     * that has been <a href="{@docRoot}guide/components/aidl.html">described using
-     * aidl</a>.
-     *
-     * <p><em>Note that unlike other application components, calls on to the
-     * IBinder interface returned here may not happen on the main thread
-     * of the process</em>.  More information about the main thread can be found in
-     * <a href="{@docRoot}guide/topics/fundamentals/processes-and-threads.html">Processes and
-     * Threads</a>.</p>
-     *
-     * @param intent The Intent that was used to bind to this service,
-     *               as given to {@link Context#bindService
-     *               Context.bindService}.  Note that any extras that were included with
-     *               the Intent at that point will <em>not</em> be seen here.
-     * @return Return an IBinder through which clients can call on to the
-     * service.
-     */
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -146,7 +127,6 @@ public class ListenForNewSMSData extends Service {
             }
             postDataAPI(sms_id);
         }
-        getDataAPI();
     }
 
     public interface ConnectionInterface {
@@ -162,12 +142,13 @@ public class ListenForNewSMSData extends Service {
         Log.d("sms","sent");
         SmsManager smsManager = SmsManager.getDefault();
         ArrayList<String> aMessage = smsManager.divideMessage(message);
+        Log.d(TAG, "sendSMS: " + phone_number);
         smsManager.sendMultipartTextMessage(phone_number,"",aMessage,null,null);
 //        smsManager.sendTextMessage(phone_number,null,message,null,null);
     }
 
 
-    private void postDataAPI(String sms_id){
+    private void postDataAPI(final String sms_id){
         SMSModel sms_id_model = new SMSModel(sms_id);
         Call<ResponseModel> call = service.PostSMS(sms_id_model);
         call.enqueue(new Callback<ResponseModel>() {
@@ -176,7 +157,11 @@ public class ListenForNewSMSData extends Service {
                 //check for the value of message and status to dictate the next move
                 Log.d("P_Msg and Status()->","here");
                 Log.d("POST_RESPONSE", response.raw().message());
-                if(response.body() != null) if(response.body().getStatus() != null) Log.d("POST_STATUS",response.body().getStatus());
+                if(response.body() != null)
+                    if(response.body().getStatus() != null) {
+                        getDataAPI();
+                        Log.d("POST_STATUS",response.body().getStatus());
+                    }
             }
 
             @Override
@@ -184,6 +169,7 @@ public class ListenForNewSMSData extends Service {
                 //dismiss progress indicator
                 //show reason for failure
                 Log.e("post_Retrofit_Error",t.getMessage());
+                postDataAPI(sms_id);
             }
         });
     }
