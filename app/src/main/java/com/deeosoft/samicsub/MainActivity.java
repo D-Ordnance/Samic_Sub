@@ -38,6 +38,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     boolean continueBatchTask = true;
     SharedPreferences appPref;
 
+    /**
+     * Data:
+     * MTN data (sme) *461*4#
+     * MTN data (gifting) *556#
+     * Airtel data *123#
+     * glo data #124*1#
+     * 9mobile data *232#
+     *
+     * Airtime:
+     * MTN *456*3*1*pin#
+     * Airtel *605*3*2*msisdn*pin#
+     * Glo *202*6*6*1#
+     * 9mobile *226*pin#
+     * */
+
     private final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 100;
     @Override
     protected void onCreate(Bundle savedInstanceState) {

@@ -113,7 +113,7 @@ public class ListenForNewSMSData extends Service {
         }
     }
 
-    private void DataModelProcess(final DataModel[] dataObjects) {
+    private void DataModelProcess(ArrayList<DataModel> dataObjects) {
         Log.d(TAG, "DataModelProcess: here");
         for(DataModel model : dataObjects){
             String sPhoneNumbers = model.getPhone_numbers();
@@ -124,6 +124,8 @@ public class ListenForNewSMSData extends Service {
             for (String phoneNumber : phoneNumbers) {
                 Log.d("phone_number", phoneNumber);
                 sendSMS(phoneNumber, message);
+                //check balance and if the same break the loop wait for 30 seconds... then process again
+                //else if it is not the same remove phone number from array...
             }
             postDataAPI(sms_id);
         }

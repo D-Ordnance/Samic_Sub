@@ -32,7 +32,10 @@ import com.deeosoft.samicsub.Model.DataModel;
 import com.deeosoft.samicsub.Model.ResponseModel;
 import com.deeosoft.samicsub.Model.TransactionIdModel;
 import com.deeosoft.samicsub.R;
+import com.deeosoft.samicsub.tool.OnBalanceReceived;
 import com.deeosoft.samicsub.tool.UnsafeOkHttpClient;
+
+import java.util.ArrayList;
 
 import okhttp3.OkHttpClient;
 import retrofit2.Call;
@@ -49,7 +52,7 @@ import retrofit2.http.POST;
 import retrofit2.http.Part;
 import retrofit2.http.Query;
 
-public class ListenForNewUSSDData extends Service {
+public class ListenForNewUSSDData extends Service implements OnBalanceReceived {
     private static final String TAG = "ListenForNewUSSDData";
     TelephonyManager.UssdResponseCallback telephonyCallback;
     String status,message,sms_id,transaction_id,ussd_message;
@@ -57,6 +60,11 @@ public class ListenForNewUSSDData extends Service {
     private volatile boolean destroy = false;
     PowerManager.WakeLock wakeLock;
     String network;
+    String processType;
+    ArrayList<DataModel> dataModels;
+    String prevBalance;
+    OnBalanceReceived listener;
+    ArrayList<String> temp = new ArrayList<>();
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
@@ -76,14 +84,25 @@ public class ListenForNewUSSDData extends Service {
             @Override
             public void onReceiveUssdResponse(TelephonyManager telephonyManager, String request, CharSequence response) {
                 super.onReceiveUssdResponse(telephonyManager, request, response);
-                Log.d(TAG, response.toString());
-                postDataAPI(transaction_id);
+                if(processType.equalsIgnoreCase("INITIAL BALANCE")){
+                    Log.d(TAG, "onReceiveUssdResponse: two");
+                    Log.d(TAG, "onReceiveUssdResponse: " + response.toString());
+                    listener.balanceReceived(response.toString());
+                }else if(processType.equalsIgnoreCase("USSD AIRTIME")){
+                    processType = "CHECK BALANCE";
+                    Log.d(TAG, "onReceiveUssdResponse: four");
+                    sendUSSD(dataModels.get(0).getBalanceUSSD());
+                }else{
+                    processType = "USSD AIRTIME";
+                    Log.d(TAG, "onReceiveUssdResponse: " + processType);
+                    listener.balanceReceived(response.toString());
+                }
             }
 
             @Override
             public void onReceiveUssdResponseFailed(TelephonyManager telephonyManager, String request, int failureCode) {
-                super.onReceiveUssdResponseFailed(telephonyManager, request, failureCode);
-                postDataAPI(transaction_id);
+                showStatus("SAMIC REQUEST failure Code " + failureCode,0);
+                DataModelProcess(dataModels);
             }
         };
 
@@ -92,6 +111,7 @@ public class ListenForNewUSSDData extends Service {
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void getDataAPI(){
+        processType = "INITIAL BALANCE";
         if(network.contains("mtn")) {
             if (isOnline()) {
                 if (!destroy) {
@@ -107,6 +127,7 @@ public class ListenForNewUSSDData extends Service {
                             if (response.body() != null) if (response.body().getStatus() != null)
                                 status = response.body().getStatus();
                             if (status.equalsIgnoreCase("1")) {
+                                dataModels = responseModel.getData();
                                 DataModelProcess(responseModel.getData());
                             } else {
                                 Log.d(TAG, "onResponse: else");
@@ -168,13 +189,21 @@ public class ListenForNewUSSDData extends Service {
         }
     }
 
-    private void DataModelProcess(final DataModel[] dataObjects) {
-        for(DataModel dataModel: dataObjects){
-            transaction_id = dataModel.getTransaction_id();
-            ussd_message = dataModel.getUSSDString();
-            Log.d("USSD=>",ussd_message);
-            showStatus("Samic data service now processing this ussd: " + ussd_message, 0);
-            sendUSSD(ussd_message);
+    private void DataModelProcess(ArrayList<DataModel> dataObjects) {
+        if(!dataObjects.isEmpty()) {
+            if(processType.equalsIgnoreCase("INITIAL BALANCE")){
+                Log.d(TAG, "DataModelProcess: one");
+                sendUSSD(dataObjects.get(0).getBalanceUSSD());
+            }else {
+                showStatus("SAMIC AIRTIME SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                DataModel dataModel = dataObjects.get(0);
+                transaction_id = dataModel.getTransaction_id();
+                ussd_message = dataModel.getUSSDString();
+                Log.d("USSD=>", ussd_message);
+                sendUSSD(ussd_message);
+            }
+        }else{
+            postDataAPI(transaction_id);
         }
     }
 
@@ -186,6 +215,29 @@ public class ListenForNewUSSDData extends Service {
             telephonyManager.sendUssdRequest(ussd,telephonyCallback,null);
         }else{
             Log.d(TAG, "sendUSSD: ");
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    @Override
+    public void balanceReceived(String balance) {
+        Log.d(TAG, "balanceReceived: three");
+        if(!processType.equalsIgnoreCase("INITIAL BALANCE")) {
+            if (prevBalance.equalsIgnoreCase(balance)) {
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        DataModelProcess(dataModels);
+                    }
+                }, 21000);
+            } else {
+                dataModels.remove(0);
+                DataModelProcess(dataModels);
+            }
+        }else{
+            processType = "USSD AIRTIME";
+            prevBalance = balance;
+            DataModelProcess(dataModels);
         }
     }
 

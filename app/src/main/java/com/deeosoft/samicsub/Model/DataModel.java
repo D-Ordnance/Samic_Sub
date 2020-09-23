@@ -89,6 +89,9 @@ public class DataModel {
     @SerializedName("ussd_string")
     @Expose
     private String ussd_string;
+    @SerializedName("balance_ussd")
+    @Expose
+    private String balance_ussd;
 
     public String getId(){
         return this.id;
@@ -312,5 +315,13 @@ public class DataModel {
 
     public void setUSSDString(String ussd_string) {
         this.ussd_string = ussd_string;
+    }
+
+    public String getBalanceUSSD() {
+        return balance_ussd;
+    }
+
+    public void setBalanceUSSD(String balance_ussd) {
+        this.balance_ussd = balance_ussd;
     }
 }

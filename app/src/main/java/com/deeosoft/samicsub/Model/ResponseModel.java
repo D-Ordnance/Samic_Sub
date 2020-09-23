@@ -3,6 +3,7 @@ package com.deeosoft.samicsub.Model;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class ResponseModel {
@@ -14,7 +15,7 @@ public class ResponseModel {
     private String status;
     @SerializedName("data")
     @Expose
-    private DataModel[] data;
+    private ArrayList<DataModel> data;
 
     @SerializedName("error")
     @Expose
@@ -36,7 +37,7 @@ public class ResponseModel {
         this.status = status;
     }
 
-    public DataModel[] getData(){
+    public ArrayList<DataModel> getData(){
         return this.data;
     }
 
@@ -44,7 +45,7 @@ public class ResponseModel {
         return Arrays.toString(models);
     }
 
-    public void setData(DataModel[] data) {
+    public void setData(ArrayList<DataModel> data) {
         this.data = data;
     }
 
