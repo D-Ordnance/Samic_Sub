@@ -36,6 +36,8 @@ import com.deeosoft.samicsub.tool.OnBalanceReceived;
 import com.deeosoft.samicsub.tool.UnsafeOkHttpClient;
 
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.OkHttpClient;
 import retrofit2.Call;
@@ -82,18 +84,23 @@ public class ListenForNewUSSDAirtime extends Service implements OnBalanceReceive
             @Override
             public void onReceiveUssdResponse(TelephonyManager telephonyManager, String request, CharSequence response) {
                 super.onReceiveUssdResponse(telephonyManager, request, response);
+                String test = "Your data balance:\nSME Data Sponsor: 52777.27 expires 25/12/2019";
+                Pattern p = Pattern.compile("[\\d]+[,][\\d]+[.][\\d]+|[\\d]+[.][\\d]+");
+                Matcher m = p.matcher(response);
+                String balance = m.group();
+                Log.d(TAG, "ussd response: "+ response.toString());
                 if(processType.equalsIgnoreCase("INITIAL BALANCE")){
                     Log.d(TAG, "onReceiveUssdResponse: two");
-                    Log.d(TAG, "onReceiveUssdResponse: " + response.toString());
-                    listener.balanceReceived(response.toString());
+                    Log.d(TAG, "ussd balance: " + balance);
+                    listener.balanceReceived(balance);
                 }else if(processType.equalsIgnoreCase("USSD AIRTIME")){
                     processType = "CHECK BALANCE";
                     Log.d(TAG, "onReceiveUssdResponse: four");
                     sendUSSD(dataModels.get(0).getBalanceUSSD());
                 }else{
                     processType = "USSD AIRTIME";
-                    Log.d(TAG, "onReceiveUssdResponse: " + processType);
-                    listener.balanceReceived(response.toString());
+                    Log.d(TAG, "process type: " + processType);
+                    listener.balanceReceived(balance);
                 }
             }
             @Override

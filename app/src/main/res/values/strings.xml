@@ -11,6 +11,7 @@
     <string name="data">Data</string>
     <string name="airtime">Airtime</string>
     <string name="call">CALL</string>
+    <string name="balance">balance</string>
 
     <string-array name="networks">
         <item>Select network to process</item>
