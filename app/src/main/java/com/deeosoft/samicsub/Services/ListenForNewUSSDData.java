@@ -75,7 +75,7 @@ public class ListenForNewUSSDData extends Service implements OnBalanceReceived {
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://superadmin.samicsub.com/api/")
+                .baseUrl("http://testsuper.samicsub.com/api/")
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
