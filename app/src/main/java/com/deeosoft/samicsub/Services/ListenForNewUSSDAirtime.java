@@ -53,7 +53,7 @@ import retrofit2.http.Headers;
 import retrofit2.http.POST;
 import retrofit2.http.Query;
 
-public class ListenForNewUSSDAirtime extends Service implements OnBalanceReceived {
+public class ListenForNewUSSDAirtime extends Service {
     private static final String TAG = "ListenForNewUSSDAirtime";
     TelephonyManager.UssdResponseCallback telephonyCallback;
     String status,message,sms_id,transaction_id,ussd_message;
@@ -64,14 +64,12 @@ public class ListenForNewUSSDAirtime extends Service implements OnBalanceReceive
     String processType;
     ArrayList<DataModel> dataModels;
     String prevBalance;
-    OnBalanceReceived listener;
     ArrayList<DataModel> failedModels;
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onCreate() {
         super.onCreate();
-        OnReceivedBalanceListener(this);
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -92,7 +90,7 @@ public class ListenForNewUSSDAirtime extends Service implements OnBalanceReceive
                 if(processType.equalsIgnoreCase("INITIAL BALANCE")){
                     Log.d(TAG, "onReceiveUssdResponse: two");
                     Log.d(TAG, "ussd balance: " + balance);
-                    listener.balanceReceived(balance);
+                    balanceReceived(balance);
                 }else if(processType.equalsIgnoreCase("USSD AIRTIME")){
                     processType = "CHECK BALANCE";
                     Log.d(TAG, "onReceiveUssdResponse: four");
@@ -100,7 +98,7 @@ public class ListenForNewUSSDAirtime extends Service implements OnBalanceReceive
                 }else{
                     processType = "USSD AIRTIME";
                     Log.d(TAG, "process type: " + processType);
-                    listener.balanceReceived(balance);
+                    balanceReceived(balance);
                 }
             }
             @Override
@@ -222,8 +220,7 @@ public class ListenForNewUSSDAirtime extends Service implements OnBalanceReceive
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    @Override
-    public void balanceReceived(String balance) {
+    private void balanceReceived(String balance) {
         Log.d(TAG, "balanceReceived: three");
         if(!processType.equalsIgnoreCase("INITIAL BALANCE")) {
             if (prevBalance.equalsIgnoreCase(balance)) {
@@ -358,11 +355,6 @@ public class ListenForNewUSSDAirtime extends Service implements OnBalanceReceive
                 .setTicker("Samic Sub")
                 .setPriority(Notification.PRIORITY_HIGH) // for under android 26 compatibility
                 .build();
-    }
-
-
-    public void OnReceivedBalanceListener(OnBalanceReceived listener){
-        this.listener = listener;
     }
 }
 
