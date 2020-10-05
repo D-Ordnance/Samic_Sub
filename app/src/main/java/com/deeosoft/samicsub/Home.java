@@ -1,10 +1,15 @@
 package com.deeosoft.samicsub;
 
 import android.Manifest;
+import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -13,19 +18,36 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.deeosoft.samicsub.Model.DataModel;
 import com.google.android.material.snackbar.Snackbar;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Home extends AppCompatActivity implements View.OnClickListener, AdapterView.OnItemSelectedListener {
     private static final String TAG = "Home";
     Button btnSms,btnUSSD,btnData;
     String networkValue;
 
+    TelephonyManager.UssdResponseCallback telephonyCallback;
+
     private final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 100;
 
+    JSONArray dummyArray = null;
+    JSONObject currentTransaction = null;
+    int transactionCount = 1;
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public void onCreate(Bundle saveInstanceState){
         super.onCreate(saveInstanceState);
         setContentView(R.layout.activity_home);
@@ -44,6 +66,43 @@ public class Home extends AppCompatActivity implements View.OnClickListener, Ada
         final Spinner spinner = findViewById(R.id.networkSpinner);
         spinner.setOnItemSelectedListener(this);
 //        networkValue = (String)spinner.getSelectedItem();
+        String dummyData = "[{\"ussd_string\":\"*123#\"},{\"ussd_string\":\"*123#\"},{\"ussd_string\":\"*123#\"},{\"ussd_string\":\"*123#\"},{\"ussd_string\":\"*123#\"}]";
+        try {
+            dummyArray = new JSONArray(dummyData);
+        }catch(JSONException e){
+            e.printStackTrace();
+        }
+
+        telephonyCallback = new TelephonyManager.UssdResponseCallback() {
+            @Override
+            public void onReceiveUssdResponse(TelephonyManager telephonyManager, String request, CharSequence response) {
+                super.onReceiveUssdResponse(telephonyManager, request, response);
+                String test = "Your data balance:\nSME Data Sponsor: 52777.27 expires 25/12/2019";
+                Log.d(TAG, "ussd response: "+ response.toString());
+                Pattern p = Pattern.compile("(([\\d]+[,][\\d]+[.][\\d]+)|([\\d]+[.][\\d]+))");
+                Matcher m = p.matcher(response);
+                Matcher n = p.matcher(test);
+//                m.find();
+//                n.find();
+                try{
+                    if(m.find()){
+                        String balanceOne = m.group();
+                        Log.d(TAG, "onReceiveUssdResponse: " + balanceOne);
+                        balanceReceived(balanceOne);
+                    }else{
+                        Log.d(TAG, "onReceiveUssdResponse: here");
+                    }
+                }catch (IllegalStateException ex){
+                    ex.printStackTrace();
+                }
+//                String balance = m.group();
+            }
+            @Override
+            public void onReceiveUssdResponseFailed(TelephonyManager telephonyManager, String request, int failureCode) {
+                super.onReceiveUssdResponseFailed(telephonyManager, request, failureCode);
+                Log.d(TAG, "onReceiveUssdResponseFailed: " + failureCode);
+            }
+        };
 
         checkPermission();
     }
@@ -120,20 +179,94 @@ public class Home extends AppCompatActivity implements View.OnClickListener, Ada
         }
     }
 
+    @TargetApi(Build.VERSION_CODES.O)
     private void CallUssd() {
+//        try {
+//                String UssdCodeNew = "*140" + Uri.encode("#");
+//                if (ActivityCompat.checkSelfPermission(Home.this, Manifest.permission.CALL_PHONE)
+//                        != PackageManager.PERMISSION_GRANTED) {
+//                    ActivityCompat.requestPermissions(Home.this,
+//                            new String[]{Manifest.permission.CALL_PHONE}, 1);
+//                } else {
+//                    startActivity(new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + UssdCodeNew)));
+//                }
+//        } catch (Exception eExcept) {
+//            eExcept.printStackTrace();
+//            Log.d(TAG, "CallUSSD: " + eExcept.getMessage());
+//        }
+
+//        Log.d(TAG, "CallUSSD: here");
+//            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+//                Log.d(TAG, "CallUssd: here2");
+//                TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+//                telephonyManager.sendUssdRequest("*140#",telephonyCallback,null);
+//            }
+
+        Log.d(TAG, "CallUssd: " + dummyArray.length());
+        DataModelProcess(dummyArray);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void DataModelProcess(JSONArray dataObjects) {
         try {
-                String UssdCodeNew = "*140" + Uri.encode("#");
-                if (ActivityCompat.checkSelfPermission(Home.this, Manifest.permission.CALL_PHONE)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(Home.this,
-                            new String[]{Manifest.permission.CALL_PHONE}, 1);
-                } else {
-                    startActivity(new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + UssdCodeNew)));
+            if(dataObjects.length() > 0) {
+                runOnUiThread(new Runnable(){
+                    @Override
+                    public void run() {
+                        Toast.makeText(Home.this,"Processing the " + formatPosition(transactionCount), Toast.LENGTH_LONG).show();
+                    }
+                });
+                currentTransaction = dataObjects.getJSONObject(0);
+                Log.d(TAG, "DataModelProcess: one");
+                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "CallUssd: here2");
+                    TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+                    telephonyManager.sendUssdRequest(currentTransaction.getString("ussd_string"),telephonyCallback,null);
                 }
-        } catch (Exception eExcept) {
-            eExcept.printStackTrace();
-            Log.d(TAG, "CallUSSD: " + eExcept.getMessage());
+            }else{
+                runOnUiThread(new Runnable(){
+                    @Override
+                    public void run() {
+                        Toast.makeText(Home.this,"done processing all transactions", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void balanceReceived(final String balance) {
+        runOnUiThread(new Runnable(){
+            @Override
+            public void run() {
+                Toast.makeText(Home.this,"Your balance is: " + balance, Toast.LENGTH_LONG).show();
+            }
+        });
+        try {
+//            String value = dummyArray.getJSONObject(0).getString("ussd_string");
+            dummyArray.remove(0);
+            transactionCount++;
+            DataModelProcess(dummyArray);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    String formatPosition(int pos){
+        String posQualifier = "th";
+        String result = "";
+        if(pos == 1){
+            result = "1st transaction";
+        }else if(pos == 2){
+            result = "2nd transaction";
+        }else if(pos == 3){
+            result = "3rd transaction";
+        }else{
+            result = pos + posQualifier + " transaction";
+        }
+        return result;
     }
 
     public void goToSMSPage(){

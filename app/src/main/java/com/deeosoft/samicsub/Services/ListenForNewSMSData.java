@@ -54,7 +54,7 @@ public class ListenForNewSMSData extends Service {
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://testsuper.samicsub.com/api/sms/")
+                .baseUrl("http://superadmin.samicsub.com/api/sms/")
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
