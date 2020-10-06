@@ -205,7 +205,7 @@ public class ListenForNewUSSDData extends Service {
 //                Log.d(TAG, "DataModelProcess: one");
                 sendUSSD(dataObjects.get(0).getBalanceUSSD());
             }else {
-                showStatus("SAMIC AIRTIME SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
                 currentTransaction = dataObjects.get(0);
                 transaction_id = currentTransaction.getTransaction_id();
                 ussd_message = currentTransaction.getUSSDString();
@@ -232,7 +232,7 @@ public class ListenForNewUSSDData extends Service {
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void balanceReceived(String balance) {
-        Log.d(TAG, "balanceReceived: three");
+//        Log.d(TAG, "balanceReceived: three");
         if(!processType.equalsIgnoreCase("INITIAL BALANCE")) {
             showStatus("Your balance now is: " + balance, 0);
             if (prevBalance.equalsIgnoreCase(balance)) {
@@ -257,6 +257,7 @@ public class ListenForNewUSSDData extends Service {
                 DataModelProcess(dataModels);
             }
         }else{
+            showStatus("Your initial balance is: " + balance, 0);
             processType = "USSD AIRTIME";
             prevBalance = balance;
             DataModelProcess(dataModels);
