@@ -1,6 +1,11 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
+    ext {
+        kotlin_version = '1.4.10'
+        hilt_version = '2.28-alpha'
+        hilt_viewmodels = "1.0.0-alpha02"
+    }
 
     repositories {
         google()

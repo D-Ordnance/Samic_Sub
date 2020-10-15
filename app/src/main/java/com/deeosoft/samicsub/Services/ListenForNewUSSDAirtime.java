@@ -72,7 +72,7 @@ public class ListenForNewUSSDAirtime extends Service {
     int transactionCount = 1;
     ArrayList<DataModel> failedTransactions = new ArrayList<>();
     JSONObject successfulTransactions = new JSONObject();
-    JSONObject imCompletedTransactions = new JSONObject();
+    JSONObject inCompletedTransactions = new JSONObject();
     JSONArray successfulArray = new JSONArray();
     int transactionCounter = 1;
     SharedPreferences appPref;
@@ -97,6 +97,12 @@ public class ListenForNewUSSDAirtime extends Service {
                 Matcher m = p.matcher(response);
                 if(processType.equalsIgnoreCase("INITIAL BALANCE")){
                     if(m.find()) {
+                        new Handler(Looper.getMainLooper()).post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getApplicationContext(), "Successfully got the balance", Toast.LENGTH_LONG).show();
+                            }
+                        });
                         String balance = m.group();
                         balanceReceived(balance);
                     }else{
@@ -110,16 +116,28 @@ public class ListenForNewUSSDAirtime extends Service {
                     }
                 }else if(processType.equalsIgnoreCase("USSD AIRTIME")){
                     processType = "CHECK BALANCE";
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(getApplicationContext(), "sending ussd", Toast.LENGTH_LONG).show();
+                        }
+                    });
                     sendUSSD(dataModels.get(0).getBalanceUSSD());
                 }else{
                     if(m.find()) {
+                        new Handler(Looper.getMainLooper()).post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getApplicationContext(), "Successfully got the balance", Toast.LENGTH_LONG).show();
+                            }
+                        });
                         processType = "USSD AIRTIME";
                         String balance = m.group();
                         balanceReceived(balance);
                     }else{
                         try {
-                            imCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
-                            successfulArray.put(imCompletedTransactions);
+                            inCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
+                            successfulArray.put(inCompletedTransactions);
                             appPref.edit().putString("successful_transactions", successfulArray.toString()).apply();
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -139,8 +157,8 @@ public class ListenForNewUSSDAirtime extends Service {
                 super.onReceiveUssdResponseFailed(telephonyManager, request, failureCode);
                 if (processType.equalsIgnoreCase("CHECK BALANCE")) {
                     try {
-                        imCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
-                        successfulArray.put(imCompletedTransactions);
+                        inCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
+                        successfulArray.put(inCompletedTransactions);
                         appPref.edit().putString("successful_transactions", successfulArray.toString()).apply();
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -243,6 +261,7 @@ public class ListenForNewUSSDAirtime extends Service {
         if(!dataObjects.isEmpty()) {
             showStatus("The number of transaction to be processed is " + dataObjects.size(), 0);
             if(processType.equalsIgnoreCase("INITIAL BALANCE")){
+                showStatus("getting balance dialing: " + dataObjects.get(0).getBalanceUSSD(), 0);
                 sendUSSD(dataObjects.get(0).getBalanceUSSD());
             }else {
                 try {
@@ -257,7 +276,6 @@ public class ListenForNewUSSDAirtime extends Service {
                             sendUSSD(ussd_message);
                         }
                     }
-
                 }catch(JSONException ex){
                     ex.printStackTrace();
                 }
