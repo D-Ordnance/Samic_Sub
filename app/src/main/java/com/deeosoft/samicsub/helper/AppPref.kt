@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 
 class AppPref(context: Context) {
-    val appPref = context.getSharedPreferences("tru", Context.MODE_PRIVATE)
+    val appPref = context.getSharedPreferences("samic sub", Context.MODE_PRIVATE)
     fun writeAppAirtimeState(airtime_state:String){
         appPref.edit().putString("airtime state", airtime_state).apply()
     }

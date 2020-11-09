@@ -44,6 +44,9 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
 import okhttp3.OkHttpClient;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -58,6 +61,7 @@ import retrofit2.http.Headers;
 import retrofit2.http.POST;
 import retrofit2.http.Query;
 
+@AndroidEntryPoint
 public class ListenForNewUSSDAirtime extends Service {
     private static final String TAG = "ListenForNewUSSDAirtime";
     TelephonyManager.UssdResponseCallback telephonyCallback;
@@ -75,6 +79,7 @@ public class ListenForNewUSSDAirtime extends Service {
     JSONObject inCompletedTransactions = new JSONObject();
     JSONArray successfulArray = new JSONArray();
     int transactionCounter = 1;
+//    @Inject
     SharedPreferences appPref;
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -259,22 +264,30 @@ public class ListenForNewUSSDAirtime extends Service {
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void DataModelProcess(ArrayList<DataModel> dataObjects) {
         if(!dataObjects.isEmpty()) {
-            showStatus("The number of transaction to be processed is " + dataObjects.size(), 0);
             if(processType.equalsIgnoreCase("INITIAL BALANCE")){
-                showStatus("getting balance dialing: " + dataObjects.get(0).getBalanceUSSD(), 0);
                 sendUSSD(dataObjects.get(0).getBalanceUSSD());
             }else {
+                showStatus("The number of transaction to be processed is " + dataObjects.size(), 0);
                 try {
                     String sTransaction = appPref.getString("successful_transactions", null);
-                    JSONArray jsonArray = new JSONArray(sTransaction);
                     DataModel dataModel = dataObjects.get(0);
-                    for(int i = 0; i < jsonArray.length(); i++){
-                        if(!jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())){
-                            showStatus("SAMIC AIRTIME SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
-                            transaction_id = dataModel.getTransaction_id();
-                            ussd_message = dataModel.getUSSDString();
-                            sendUSSD(ussd_message);
+                    Log.d(TAG, "DataModelProcess: here1");
+                    if(sTransaction != null) {
+                        JSONArray jsonArray = new JSONArray(sTransaction);
+                        for (int i = 0; i < jsonArray.length(); i++) {
+                            if (!jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())) {
+                                showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                                transaction_id = dataModel.getTransaction_id();
+                                ussd_message = dataModel.getUSSDString();
+                                sendUSSD(ussd_message);
+                            }
                         }
+                    }else{
+                        Log.d(TAG, "DataModelProcess: here");
+                        showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                        transaction_id = dataModel.getTransaction_id();
+                        ussd_message = dataModel.getUSSDString();
+                        sendUSSD(ussd_message);
                     }
                 }catch(JSONException ex){
                     ex.printStackTrace();

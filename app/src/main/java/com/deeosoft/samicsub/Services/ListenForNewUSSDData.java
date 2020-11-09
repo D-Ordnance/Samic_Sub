@@ -238,21 +238,30 @@ public class ListenForNewUSSDData extends Service {
 
     private void DataModelProcess(ArrayList<DataModel> dataObjects) {
         if(!dataObjects.isEmpty()) {
-            showStatus("The number of transaction to be processed is " + dataObjects.size(), 0);
             if(processType.equalsIgnoreCase("INITIAL BALANCE")){
                 sendUSSD(dataObjects.get(0).getBalanceUSSD());
             }else {
+                showStatus("The number of transaction to be processed is " + dataObjects.size(), 0);
                 try {
                     String sTransaction = appPref.getString("successful_transactions", null);
-                    JSONArray jsonArray = new JSONArray(sTransaction);
                     DataModel dataModel = dataObjects.get(0);
-                    for(int i = 0; i < jsonArray.length(); i++){
-                        if(!jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())){
-                            showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
-                            transaction_id = dataModel.getTransaction_id();
-                            ussd_message = dataModel.getUSSDString();
-                            sendUSSD(ussd_message);
+                    Log.d(TAG, "DataModelProcess: here1");
+                    if(sTransaction != null) {
+                        JSONArray jsonArray = new JSONArray(sTransaction);
+                        for (int i = 0; i < jsonArray.length(); i++) {
+                            if (!jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())) {
+                                showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                                transaction_id = dataModel.getTransaction_id();
+                                ussd_message = dataModel.getUSSDString();
+                                sendUSSD(ussd_message);
+                            }
                         }
+                    }else{
+                        Log.d(TAG, "DataModelProcess: here");
+                        showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                        transaction_id = dataModel.getTransaction_id();
+                        ussd_message = dataModel.getUSSDString();
+                        sendUSSD(ussd_message);
                     }
                 }catch(JSONException ex){
                     ex.printStackTrace();
