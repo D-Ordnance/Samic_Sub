@@ -28,12 +28,10 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 
 import com.deeosoft.samicsub.Home;
-import com.deeosoft.samicsub.MainActivity;
 import com.deeosoft.samicsub.Model.DataModel;
 import com.deeosoft.samicsub.Model.ResponseModel;
 import com.deeosoft.samicsub.Model.TransactionIdModel;
 import com.deeosoft.samicsub.R;
-import com.deeosoft.samicsub.tool.OnBalanceReceived;
 import com.deeosoft.samicsub.tool.UnsafeOkHttpClient;
 
 import org.json.JSONArray;
@@ -44,8 +42,6 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
-
 import dagger.hilt.android.AndroidEntryPoint;
 import okhttp3.OkHttpClient;
 import retrofit2.Call;
@@ -54,8 +50,6 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.Body;
-import retrofit2.http.Field;
-import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
