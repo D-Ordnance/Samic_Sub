@@ -207,7 +207,6 @@ public class ListenForNewUSSDAirtime extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-//        Log.d(TAG, "onDestroy: here");
         stopForeground(true);
         try {
             if (wakeLock.isHeld()){
@@ -245,8 +244,6 @@ public class ListenForNewUSSDAirtime extends Service {
 
                         @Override
                         public void onFailure(Call<ResponseModel> call, Throwable t) {
-                            //dismiss progress indicator
-                            //show reason for failure
                             showStatus("Samic has lost network connection. trying to reconnect in 20 seconds. if it persist check your network connection."
                                     , 20000);
                         }
