@@ -67,12 +67,14 @@ public class ListenForNewUSSDAirtime extends Service {
     String processType;
     ArrayList<DataModel> dataModels;
     String prevBalance;
-    int transactionCount = 1;
+    int transactionCount;
     ArrayList<DataModel> failedTransactions = new ArrayList<>();
     JSONObject successfulTransactions = new JSONObject();
     JSONObject inCompletedTransactions = new JSONObject();
     JSONArray successfulArray = new JSONArray();
-    int transactionCounter = 1;
+    String testServer = "http://testsuper.samicsub.com/api/";
+    String liveServer = "http://superadmin.samicsub.com/api/";
+    boolean transactionExistHasSuccessful;
 //    @Inject
     SharedPreferences appPref;
 
@@ -80,9 +82,11 @@ public class ListenForNewUSSDAirtime extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        transactionCount = 1;
+        transactionExistHasSuccessful = false;
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://superadmin.samicsub.com/api/")
+                .baseUrl(liveServer)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
@@ -226,13 +230,18 @@ public class ListenForNewUSSDAirtime extends Service {
                             //dismiss progress indicator
                             ResponseModel responseModel = response.body();
                             status = "-1";
-                            if (response.body() != null) if (response.body().getStatus() != null)
-                                status = response.body().getStatus();
-                            if (status.equalsIgnoreCase("1")) {
-                                dataModels = responseModel.getData();
-                                DataModelProcess(dataModels);
-                            } else {
-                                getDataAPI();
+                            try {
+                                if (response.body() != null)
+                                    if (response.body().getStatus() != null)
+                                        status = response.body().getStatus();
+                                if (status.equalsIgnoreCase("1")) {
+                                    dataModels = responseModel.getData();
+                                    DataModelProcess(dataModels);
+                                } else {
+                                    getDataAPI();
+                                }
+                            }catch(Exception ex){
+                                showStatus("Something went wrong will try again 20 seconds", 20000);
                             }
                         }
 
@@ -266,16 +275,23 @@ public class ListenForNewUSSDAirtime extends Service {
                     if(sTransaction != null) {
                         JSONArray jsonArray = new JSONArray(sTransaction);
                         for (int i = 0; i < jsonArray.length(); i++) {
-                            if (!jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())) {
-                                showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
-                                transaction_id = dataModel.getTransaction_id();
-                                ussd_message = dataModel.getUSSDString();
-                                sendUSSD(ussd_message);
+                            if (jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())) {
+                                transactionExistHasSuccessful = true;
+                                break;
                             }
+                        }
+                        if(!transactionExistHasSuccessful){
+                            showStatus("SAMIC AIRTIME SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                            transaction_id = dataModel.getTransaction_id();
+                            ussd_message = dataModel.getUSSDString();
+                            sendUSSD(ussd_message);
+                        }else{
+                            dataModels.remove(0);
+                            DataModelProcess(dataModels);
                         }
                     }else{
                         Log.d(TAG, "DataModelProcess: here");
-                        showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                        showStatus("SAMIC AIRTIME SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
                         transaction_id = dataModel.getTransaction_id();
                         ussd_message = dataModel.getUSSDString();
                         sendUSSD(ussd_message);
@@ -314,7 +330,7 @@ public class ListenForNewUSSDAirtime extends Service {
                     new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                         @Override
                         public void run() {
-                            Toast.makeText(getApplicationContext(), "Transaction failed, Will retry again in 10 seconds...", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getApplicationContext(), "Transaction failed as balance remains the same, Will retry again in 10 seconds...", Toast.LENGTH_LONG).show();
                             DataModelProcess(dataModels);
                         }
                     }, 10000);

@@ -47,6 +47,9 @@ public class ListenForNewSMSData extends Service {
     private volatile boolean destroy = false;
     PowerManager.WakeLock wakeLock;
 
+    String testServer = "http://testsuper.samicsub.com/api/";
+    String liveServer = "http://superadmin.samicsub.com/api/";
+
     @RequiresApi(api = Build.VERSION_CODES.KITKAT_WATCH)
     @Override
     public void onCreate() {
@@ -54,7 +57,7 @@ public class ListenForNewSMSData extends Service {
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://superadmin.samicsub.com/api/sms/")
+                .baseUrl(testServer)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();

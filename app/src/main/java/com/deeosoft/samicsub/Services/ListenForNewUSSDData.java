@@ -65,7 +65,7 @@ public class ListenForNewUSSDData extends Service {
     String processType;
     ArrayList<DataModel> dataModels;
     String prevBalance;
-    int transactionCount = 0;
+    int transactionCount;
     ArrayList<DataModel> fTransaction = new ArrayList<>();
     ArrayList<DataModel> sTransaction = new ArrayList<>();
     JSONObject successfulTransactions = new JSONObject();
@@ -73,15 +73,20 @@ public class ListenForNewUSSDData extends Service {
     JSONArray successfulArray = new JSONArray();
     DataModel currentTransaction;
     SharedPreferences appPref;
+    boolean transactionExistHasSuccessful;
+    String testServer = "http://testsuper.samicsub.com/api/";
+    String liveServer = "http://superadmin.samicsub.com/api/";
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onCreate() {
         super.onCreate();
+        transactionCount = 1;
+        transactionExistHasSuccessful = false;
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://superadmin.samicsub.com/api/")
+                .baseUrl(liveServer)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
@@ -244,12 +249,19 @@ public class ListenForNewUSSDData extends Service {
                     if(sTransaction != null) {
                         JSONArray jsonArray = new JSONArray(sTransaction);
                         for (int i = 0; i < jsonArray.length(); i++) {
-                            if (!jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())) {
-                                showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
-                                transaction_id = dataModel.getTransaction_id();
-                                ussd_message = dataModel.getUSSDString();
-                                sendUSSD(ussd_message);
+                            if (jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())) {
+                                transactionExistHasSuccessful = true;
+                                break;
                             }
+                        }
+                        if(!transactionExistHasSuccessful){
+                            showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+                            transaction_id = dataModel.getTransaction_id();
+                            ussd_message = dataModel.getUSSDString();
+                            sendUSSD(ussd_message);
+                        }else{
+                            dataModels.remove(0);
+                            DataModelProcess(dataModels);
                         }
                     }else{
                         Log.d(TAG, "DataModelProcess: here");
