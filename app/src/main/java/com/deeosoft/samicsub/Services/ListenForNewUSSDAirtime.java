@@ -50,6 +50,8 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.Body;
+import retrofit2.http.Field;
+import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
@@ -67,14 +69,15 @@ public class ListenForNewUSSDAirtime extends Service {
     String processType;
     ArrayList<DataModel> dataModels;
     String prevBalance;
-    int transactionCount;
-    ArrayList<DataModel> failedTransactions = new ArrayList<>();
-    JSONObject successfulTransactions = new JSONObject();
-    JSONObject inCompletedTransactions = new JSONObject();
-    JSONArray successfulArray = new JSONArray();
+    int transactionCount, balanceCheckCount;
+//    ArrayList<DataModel> failedTransactions = new ArrayList<>();
+//    JSONObject successfulTransactions = new JSONObject();
+//    JSONObject inCompletedTransactions = new JSONObject();
+//    JSONArray successfulArray = new JSONArray();
     String testServer = "http://testsuper.samicsub.com/api/";
     String liveServer = "http://superadmin.samicsub.com/api/";
     boolean transactionExistHasSuccessful;
+    String screen_message = "", transaction_type = "airtime";
 //    @Inject
     SharedPreferences appPref;
 
@@ -83,6 +86,7 @@ public class ListenForNewUSSDAirtime extends Service {
     public void onCreate() {
         super.onCreate();
         transactionCount = 1;
+        balanceCheckCount = 1;
         transactionExistHasSuccessful = false;
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
         Retrofit retrofit = new Retrofit.Builder()
@@ -97,6 +101,7 @@ public class ListenForNewUSSDAirtime extends Service {
             public void onReceiveUssdResponse(TelephonyManager telephonyManager, String request, CharSequence response) {
                 super.onReceiveUssdResponse(telephonyManager, request, response);
                 Pattern p = Pattern.compile("(([\\d]+[,][\\d]+[.][\\d]+)|([\\d]+[.][\\d]+))");
+                Log.d("ussd response", response.toString());
                 Matcher m = p.matcher(response);
                 if(processType.equalsIgnoreCase("INITIAL BALANCE")){
                     if(m.find()) {
@@ -109,13 +114,19 @@ public class ListenForNewUSSDAirtime extends Service {
                         String balance = m.group();
                         balanceReceived(balance);
                     }else{
-                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
-                                DataModelProcess(dataModels);
-                            }
-                        }, 5000);
+                        if(balanceCheckCount <= 5){
+                            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
+                                    DataModelProcess(dataModels);
+                                }
+                            }, 5000);
+
+                        }else{
+                            balanceCheckCount = 1;
+                            Toast.makeText(getApplicationContext(), "You need to restart the application there were too many failed transaction", Toast.LENGTH_LONG).show();
+                        }
                     }
                 }else if(processType.equalsIgnoreCase("USSD AIRTIME")){
                     processType = "CHECK BALANCE";
@@ -137,14 +148,38 @@ public class ListenForNewUSSDAirtime extends Service {
                         processType = "USSD AIRTIME";
                         String balance = m.group();
                         balanceReceived(balance);
-                    }else{
-                        try {
-                            inCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
-                            successfulArray.put(inCompletedTransactions);
-                            appPref.edit().putString("successful_transactions", successfulArray.toString()).apply();
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
+                    }
+//                    else{
+//                        try {
+//                            inCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
+//                            successfulArray.put(inCompletedTransactions);
+//                            appPref.edit().putString("successful_transactions", successfulArray.toString()).apply();
+//                        } catch (JSONException e) {
+//                            e.printStackTrace();
+//                        }
+//                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
+//                                DataModelProcess(dataModels);
+//                            }
+//                        }, 5000);
+//                    }
+                }
+            }
+            @Override
+            public void onReceiveUssdResponseFailed(TelephonyManager telephonyManager, String request, int failureCode) {
+                super.onReceiveUssdResponseFailed(telephonyManager, request, failureCode);
+                if (processType.equalsIgnoreCase("CHECK BALANCE")) {
+//                    try {
+//                        inCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
+//                        successfulArray.put(inCompletedTransactions);
+//                        appPref.edit().putString("successful_transactions", successfulArray.toString()).apply();
+//                    } catch (JSONException e) {
+//                        e.printStackTrace();
+//                    }
+                    if(balanceCheckCount <=5 ){
+                        balanceCheckCount++;
                         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                             @Override
                             public void run() {
@@ -152,30 +187,25 @@ public class ListenForNewUSSDAirtime extends Service {
                                 DataModelProcess(dataModels);
                             }
                         }, 5000);
+                    }else{
+                        balanceCheckCount = 1;
+                        Toast.makeText(getApplicationContext(), "You need to restart the application there were too many failed transaction", Toast.LENGTH_LONG).show();
                     }
-                }
-            }
-            @Override
-            public void onReceiveUssdResponseFailed(TelephonyManager telephonyManager, String request, int failureCode) {
-                super.onReceiveUssdResponseFailed(telephonyManager, request, failureCode);
-                if (processType.equalsIgnoreCase("CHECK BALANCE")) {
-                    try {
-                        inCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
-                        successfulArray.put(inCompletedTransactions);
-                        appPref.edit().putString("successful_transactions", successfulArray.toString()).apply();
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
-                            DataModelProcess(dataModels);
-                        }
-                    }, 5000);
                 }else{
                     showStatus("SAMIC REQUEST failure Code " + failureCode, 0);
-                    DataModelProcess(dataModels);
+                    if(transactionCount <= 5) {
+                        transactionCount++;
+                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getApplicationContext(), "The app failed to process " + dataModels.get(0).getUSSDString() + " transaction, Restarting the app in 20 seconds", Toast.LENGTH_LONG).show();
+                                DataModelProcess(dataModels);
+                            }
+                        }, 20000);
+                    }else{
+                        transactionCount = 1;
+                        Toast.makeText(getApplicationContext(), "You need to restart the application there were too many failed transaction", Toast.LENGTH_LONG).show();
+                    }
                 }
             }
         };
@@ -267,38 +297,38 @@ public class ListenForNewUSSDAirtime extends Service {
             if(processType.equalsIgnoreCase("INITIAL BALANCE")){
                 sendUSSD(dataObjects.get(0).getBalanceUSSD());
             }else {
-                showStatus("The number of transaction to be processed is " + dataObjects.size(), 0);
-                try {
-                    String sTransaction = appPref.getString("successful_transactions", null);
+//                showStatus("The number of transaction to be processed is " + dataObjects.size(), 0);
+//                try {
+//                    String sTransaction = appPref.getString("successful_transactions", null);
                     DataModel dataModel = dataObjects.get(0);
                     Log.d(TAG, "DataModelProcess: here1");
-                    if(sTransaction != null) {
-                        JSONArray jsonArray = new JSONArray(sTransaction);
-                        for (int i = 0; i < jsonArray.length(); i++) {
-                            if (jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())) {
-                                transactionExistHasSuccessful = true;
-                                break;
-                            }
-                        }
-                        if(!transactionExistHasSuccessful){
-                            showStatus("SAMIC AIRTIME SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
-                            transaction_id = dataModel.getTransaction_id();
-                            ussd_message = dataModel.getUSSDString();
-                            sendUSSD(ussd_message);
-                        }else{
-                            dataModels.remove(0);
-                            DataModelProcess(dataModels);
-                        }
-                    }else{
+//                    if(sTransaction != null) {
+//                        JSONArray jsonArray = new JSONArray(sTransaction);
+//                        for (int i = 0; i < jsonArray.length(); i++) {
+//                            if (jsonArray.getJSONObject(i).getString("transaction_id").equalsIgnoreCase(dataModel.getTransaction_id())) {
+//                                transactionExistHasSuccessful = true;
+//                                break;
+//                            }
+//                        }
+//                        if(!transactionExistHasSuccessful){
+//                            showStatus("SAMIC AIRTIME SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
+//                            transaction_id = dataModel.getTransaction_id();
+//                            ussd_message = dataModel.getUSSDString();
+//                            sendUSSD(ussd_message);
+//                        }else{
+//                            dataModels.remove(0);
+//                            DataModelProcess(dataModels);
+//                        }
+//                    }else{
                         Log.d(TAG, "DataModelProcess: here");
                         showStatus("SAMIC AIRTIME SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
                         transaction_id = dataModel.getTransaction_id();
                         ussd_message = dataModel.getUSSDString();
                         sendUSSD(ussd_message);
-                    }
-                }catch(JSONException ex){
-                    ex.printStackTrace();
-                }
+//                    }
+//                }catch(JSONException ex){
+//                    ex.printStackTrace();
+//                }
             }
         }else{
             showStatus("done processing all transactions, trying to fetch data from the web", 0);
@@ -316,44 +346,82 @@ public class ListenForNewUSSDAirtime extends Service {
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void balanceReceived(String balance) {
-        if(!processType.equalsIgnoreCase("INITIAL BALANCE")) {
-            showStatus("Your balance now is: " + balance, 0);
-            if (prevBalance.equalsIgnoreCase(balance)) {
-                if(transactionCount == 5) {
-                    transactionCount = 1;
-                    showStatus(dataModels.get(0).getUSSDString() + " failed after 5 trial", 0);
-                    failedTransactions.add(dataModels.get(0));
+        if(processType.equalsIgnoreCase("INITIAL BALANCE")){
+            prevBalance = balance;
+            processType = "USSD AIRTIME";
+            DataModelProcess(dataModels);
+        }else if(processType.equalsIgnoreCase("USSD AIRTIME")) {
+//            showStatus("Your balance now is: " + balance, 0);
+//            if (prevBalance.equalsIgnoreCase(balance)) {
+//                if(transactionCount == 5) {
+//                    transactionCount = 1;
+//                    showStatus(dataModels.get(0).getUSSDString() + " failed after 5 trial", 0);
+//                    failedTransactions.add(dataModels.get(0));
                     dataModels.remove(0);
                     DataModelProcess(dataModels);
-                }else{
-                    transactionCount++;
-                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(getApplicationContext(), "Transaction failed as balance remains the same, Will retry again in 10 seconds...", Toast.LENGTH_LONG).show();
-                            DataModelProcess(dataModels);
-                        }
-                    }, 10000);
-                }
-            } else {
-                showStatus(dataModels.get(0).getUSSDString() + " was successfully processed", 0);
-                try {
-                    successfulTransactions.put("ussd_string", dataModels.get(0).getUSSDString());
-                    successfulTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
-                    successfulArray.put(successfulTransactions);
-                    appPref.edit().putString("successful_transactions", successfulArray.toString()).apply();
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                dataModels.remove(0);
-                DataModelProcess(dataModels);
-            }
+                    postOrderForProcessing(screen_message, transaction_id, prevBalance, balance, network, transaction_type);
+                    prevBalance = balance;
+//                }else{
+//                    transactionCount++;
+//                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            Toast.makeText(getApplicationContext(), "Transaction failed as balance remains the same, Will retry again in 10 seconds...", Toast.LENGTH_LONG).show();
+//                            DataModelProcess(dataModels);
+//                        }
+//                    }, 10000);
+//                }
+//            } else {
+//                showStatus(dataModels.get(0).getUSSDString() + " was successfully processed", 0);
+//                try {
+//                    successfulTransactions.put("ussd_string", dataModels.get(0).getUSSDString());
+//                    successfulTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
+//                    successfulArray.put(successfulTransactions);
+//                    appPref.edit().putString("successful_transactions", successfulArray.toString()).apply();
+//                } catch (JSONException e) {
+//                    e.printStackTrace();
+//                }
+//                dataModels.remove(0);
+//                DataModelProcess(dataModels);
+//            }
         }else{
             showStatus("Your initial balance is: " + balance, 0);
             processType = "USSD AIRTIME";
             prevBalance = balance;
             DataModelProcess(dataModels);
         }
+    }
+
+    private void postOrderForProcessing(final String screen_message, final String transaction_id, final String balance_before, final String balance_after, final String network, final String transaction_type){
+//        TransactionIdModel transactionIdModel = new TransactionIdModel(screen_message, transaction_id, balance_before, balance_after, network, transaction_type);
+        Call<ResponseModel> call = service.processTransaction(screen_message, transaction_id, balance_before, balance_after, network, transaction_type);
+        call.enqueue(new Callback<ResponseModel>() {
+            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+            @Override
+            public void onResponse(Call<ResponseModel> call, Response<ResponseModel> response) {
+                //check for the value of message and status to dictate the next move
+//                Log.d("POST_RESPONSE", response.raw().message());
+                if(response.body() != null)
+                    if(response.body().getStatus() != null) {
+//                        getDataAPI();
+//                        Log.d("POST_STATUS", response.body().getStatus());
+                        if(dataModels.isEmpty()){
+                            getDataAPI();
+                        }else{
+//                            dataModels.remove(0);
+                            DataModelProcess(dataModels);
+                        }
+                    }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseModel> call, Throwable t) {
+                //dismiss progress indicator
+                //show reason for failure
+//                Log.e("post_Retrofit_Error",t.getMessage());
+                postOrderForProcessing(screen_message, transaction_id, balance_before, balance_after, network, transaction_type);
+            }
+        });
     }
 
     private void postDataAPI(final String transaction_id){
@@ -386,6 +454,15 @@ public class ListenForNewUSSDAirtime extends Service {
         @POST("airtime/done")
         @Headers("Accept: application/json")
         Call<ResponseModel> postDataAPI(@Body TransactionIdModel body);
+
+        @POST("process_transaction")
+        @FormUrlEncoded
+        Call<ResponseModel> processTransaction(@Field("screen_message") String screen_message,
+                                               @Field("transaction_id") String transaction_id,
+                                               @Field("balance_before") String balance_before,
+                                               @Field("balance_after") String balance_after,
+                                               @Field("network") String network,
+                                               @Field("transaction_type") String transaction_type);
     }
 
 
