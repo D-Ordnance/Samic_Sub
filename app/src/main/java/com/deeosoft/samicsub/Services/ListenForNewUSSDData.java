@@ -66,7 +66,7 @@ public class ListenForNewUSSDData extends Service {
     String network;
     String processType;
     ArrayList<DataModel> dataModels;
-    String prevBalance;
+    String prevBalance = "0";
     int transactionCount, balanceCheckCount;
 //    ArrayList<DataModel> fTransaction = new ArrayList<>();
 //    ArrayList<DataModel> sTransaction = new ArrayList<>();
@@ -81,6 +81,8 @@ public class ListenForNewUSSDData extends Service {
     String testServer = "http://testsuper.samicsub.com/api/";
     String liveServer = "http://superadmin.samicsub.com/api/";
 
+    boolean misformatted_balance_ussd = false;
+
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onCreate() {
@@ -91,7 +93,7 @@ public class ListenForNewUSSDData extends Service {
         OkHttpClient okHttpClient = UnsafeOkHttpClient.getUnsafeOkHttpClient();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(liveServer)
+                .baseUrl(testServer)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
@@ -105,38 +107,58 @@ public class ListenForNewUSSDData extends Service {
                 Log.d("ussd response", response.toString());
                 Matcher m = p.matcher(response);
                 screen_message = response.toString();
+                showStatus(response.toString(),0);
                 if(processType.equalsIgnoreCase("INITIAL BALANCE")){
                     if(m.find()) {
+                        showStatus("Successfully got the balance\nbalance is " + m.group(),0);
                         String balance = m.group();
                         balanceReceived(balance);
                     }else{
-                        if(balanceCheckCount <= 5){
-                            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
-                                    DataModelProcess(dataModels);
-                                }
-                            }, 5000);
-                        }else{
-                            balanceCheckCount = 1;
-                            Toast.makeText(getApplicationContext(), "You need to restart the application there were too many failed transaction", Toast.LENGTH_LONG).show();
-                        }
+                        postOrderForProcessing(screen_message, transaction_id,prevBalance,prevBalance,network,transaction_type,misformatted_balance_ussd = true);
+//                        if(balanceCheckCount <= 5){
+//                            balanceCheckCount++;
+//                            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+//                                @Override
+//                                public void run() {
+//                                    Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
+//                                    DataModelProcess(dataModels);
+//                                }
+//                            }, 5000);
+//                        }else{
+//                            balanceCheckCount = 1;
+//                            dataModels.remove(0);
+//                            DataModelProcess(dataModels);
+//                            showStatus("You need to restart the application there were too many failed transaction",0);
+//                        }
                     }
                 }else if(processType.equalsIgnoreCase("USSD AIRTIME")){
                     processType = "CHECK BALANCE";
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(getApplicationContext(), "sending ussd", Toast.LENGTH_LONG).show();
-                        }
-                    });
+//                    showStatus(response.toString(),0);
                     sendUSSD(dataModels.get(0).getBalanceUSSD());
                 }else{
                     if(m.find()) {
+                        showStatus("Successfully got the balance\nbalance is " + m.group(),0);
                         processType = "USSD AIRTIME";
                         String balance = m.group();
                         balanceReceived(balance);
+                    }else{
+                        transaction_id = dataModels.get(0).getTransaction_id();
+                        postOrderForProcessing(screen_message, transaction_id,prevBalance,prevBalance,network,transaction_type,misformatted_balance_ussd = true);
+//                        if(balanceCheckCount <= 5){
+//                            balanceCheckCount++;
+//                            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+//                                @Override
+//                                public void run() {
+//                                    Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
+//                                    DataModelProcess(dataModels);
+//                                }
+//                            }, 5000);
+//                        }else{
+//                            balanceCheckCount = 1;
+//                            dataModels.remove(0);
+//                            DataModelProcess(dataModels);
+////                            showStatus("You need to restart the application there were too many failed transaction",0);
+//                        }
                     }
 //                    else{
 //                        try {
@@ -159,7 +181,7 @@ public class ListenForNewUSSDData extends Service {
             @Override
             public void onReceiveUssdResponseFailed(TelephonyManager telephonyManager, String request, int failureCode) {
                 super.onReceiveUssdResponseFailed(telephonyManager, request, failureCode);
-                if (processType.equalsIgnoreCase("CHECK BALANCE")) {
+                if (processType.equalsIgnoreCase("CHECK BALANCE") || processType.equalsIgnoreCase("INITIAL BALANCE")) {
 //                    try {
 //                        imCompletedTransactions.put("transaction_id", dataModels.get(0).getTransaction_id());
 //                        successfulArray.put(imCompletedTransactions);
@@ -167,34 +189,41 @@ public class ListenForNewUSSDData extends Service {
 //                    } catch (JSONException e) {
 //                        e.printStackTrace();
 //                    }
-                    if(balanceCheckCount <= 5){
-                        balanceCheckCount++;
-                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
-                                DataModelProcess(dataModels);
-                            }
-                        }, 5000);
-                    }else{
-                        balanceCheckCount = 1;
-                        Toast.makeText(getApplicationContext(), "You need to restart the application there were too many failed transaction", Toast.LENGTH_LONG).show();
-                    }
+                    transaction_id = dataModels.get(0).getTransaction_id();
+                    postOrderForProcessing(screen_message, transaction_id,prevBalance,prevBalance,network,transaction_type,misformatted_balance_ussd = true);
+//                    if(balanceCheckCount <= 5){
+//                        balanceCheckCount++;
+//                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                Toast.makeText(getApplicationContext(), "The app failed to get balance, Restarting the app in 5 seconds", Toast.LENGTH_LONG).show();
+//                                DataModelProcess(dataModels);
+//                            }
+//                        }, 5000);
+//                    }else{
+//                        balanceCheckCount = 1;
+//                        dataModels.remove(0);
+//                        DataModelProcess(dataModels);
+////                        showStatus("You need to restart the application there were too many failed transaction",0);
+//                    }
                 }else{
-                    showStatus("SAMIC REQUEST failure Code " + failureCode, 0);
-                    if(transactionCount <= 5) {
-                        transactionCount++;
-                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(getApplicationContext(), "The app failed to process " + dataModels.get(0).getUSSDString() + " transaction, Restarting the app in 20 seconds", Toast.LENGTH_LONG).show();
-                                DataModelProcess(dataModels);
-                            }
-                        }, 20000);
-                    }else{
-                        transactionCount = 1;
-                        Toast.makeText(getApplicationContext(), "You need to restart the application there were too many failed transaction", Toast.LENGTH_LONG).show();
-                    }
+                    transaction_id = dataModels.get(0).getTransaction_id();
+                    postOrderForProcessing(screen_message, transaction_id,prevBalance,prevBalance,network,transaction_type,misformatted_balance_ussd = true);
+//                    if(transactionCount <= 5) {
+//                        transactionCount++;
+//                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                Toast.makeText(getApplicationContext(), "The app failed to process " + dataModels.get(0).getUSSDString() + " transaction, Restarting the app in 20 seconds", Toast.LENGTH_LONG).show();
+//                                DataModelProcess(dataModels);
+//                            }
+//                        }, 20000);
+//                    }else{
+//                        transactionCount = 1;
+//                        dataModels.remove(0);
+//                        DataModelProcess(dataModels);
+////                        showStatus("You need to restart the application there were too many failed transaction",0);
+//                    }
                 }
             }
         };
@@ -220,7 +249,7 @@ public class ListenForNewUSSDData extends Service {
                                 status = response.body().getStatus();
                             if (status.equalsIgnoreCase("1")) {
                                 dataModels = responseModel.getData();
-                                DataModelProcess(responseModel.getData());
+                                DataModelProcess(dataModels);
                             } else {
                                 getDataAPI();
                             }
@@ -273,8 +302,10 @@ public class ListenForNewUSSDData extends Service {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void DataModelProcess(ArrayList<DataModel> dataObjects) {
         if(!dataObjects.isEmpty()) {
+            showStatus("number of transactions to be processed: " + dataObjects.size(), 0);
             if(processType.equalsIgnoreCase("INITIAL BALANCE") || processType.equalsIgnoreCase("CHECK BALANCE")){
                 sendUSSD(dataObjects.get(0).getBalanceUSSD());
                 //screen_message
@@ -287,7 +318,6 @@ public class ListenForNewUSSDData extends Service {
 //                try {
 //                    String sTransaction = appPref.getString("successful_transactions", null);
                     DataModel dataModel = dataObjects.get(0);
-                    Log.d(TAG, "DataModelProcess: here1");
 //                    if(sTransaction != null) {
 //                        JSONArray jsonArray = new JSONArray(sTransaction);
 //                        for (int i = 0; i < jsonArray.length(); i++) {
@@ -306,7 +336,6 @@ public class ListenForNewUSSDData extends Service {
 //                            DataModelProcess(dataModels);
 //                        }
 //                    }else{
-                        Log.d(TAG, "DataModelProcess: here");
                         showStatus("SAMIC DATA SERVICE now processing this: " + dataObjects.get(0).getUSSDString(), 0);
                         transaction_id = dataModel.getTransaction_id();
                         ussd_message = dataModel.getUSSDString();
@@ -319,7 +348,7 @@ public class ListenForNewUSSDData extends Service {
         }
 //        else{
 //            showStatus("done processing all transactions, trying to fetch data from the web", 0);
-//            postDataAPI(transaction_id);
+//            getDataAPI();
 //        }
     }
 
@@ -338,7 +367,7 @@ public class ListenForNewUSSDData extends Service {
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void balanceReceived(String balance) {
 //        Log.d(TAG, "balanceReceived: three");
-        if(processType.equalsIgnoreCase("INITIAL BALANCE")){
+        if(processType.equalsIgnoreCase("INITIAL BALANCE") || processType.equalsIgnoreCase("CHECK BALANCE")){
             prevBalance = balance;
             processType = "USSD AIRTIME";
             DataModelProcess(dataModels);
@@ -349,9 +378,8 @@ public class ListenForNewUSSDData extends Service {
 //                    transactionCount = 1;
 //                    showStatus(dataModels.get(0).getUSSDString() + " failed after 5 trial", 0);
 //                    fTransaction.add(dataModels.get(0));
-                    dataModels.remove(0);
                     transaction_id = dataModels.get(0).getTransaction_id();
-                    postOrderForProcessing(screen_message, transaction_id, prevBalance, balance, network, transaction_type);
+                    postOrderForProcessing(screen_message, transaction_id, prevBalance, balance, network, transaction_type, misformatted_balance_ussd = false);
                     prevBalance = balance;
 //                    processType = "CHECK BALANCE";
 //                    DataModelProcess(dataModels);
@@ -378,17 +406,18 @@ public class ListenForNewUSSDData extends Service {
 //                dataModels.remove(0);
 //                DataModelProcess(dataModels);
 //            }
-        }else{
-//            showStatus("Your initial balance is: " + balance, 0);
-            processType = "USSD AIRTIME";
-            prevBalance = balance;
-            DataModelProcess(dataModels);
         }
+//        else{
+//            showStatus("Your initial balance is: " + balance, 0);
+//            processType = "USSD AIRTIME";
+//            prevBalance = balance;
+//            DataModelProcess(dataModels);
+//        }
     }
 
-    private void postOrderForProcessing(final String screen_message, final String transaction_id, final String balance_before, final String balance_after, final String network, final String transaction_type){
+    private void postOrderForProcessing(final String screen_message, final String transaction_id, final String balance_before, final String balance_after, final String network, final String transaction_type, final boolean misformatted_balance_ussd){
 //        TransactionIdModel transactionIdModel = new TransactionIdModel(screen_message, transaction_id, balance_before, balance_after, network, transaction_type);
-        Call<ResponseModel> call = service.processTransaction(screen_message, transaction_id, balance_before, balance_after, network, transaction_type);
+        Call<ResponseModel> call = service.processTransaction(screen_message, transaction_id, balance_before, balance_after, network, transaction_type, misformatted_balance_ussd);
         call.enqueue(new Callback<ResponseModel>() {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
@@ -399,10 +428,13 @@ public class ListenForNewUSSDData extends Service {
                     if(response.body().getStatus() != null) {
 //                        getDataAPI();
 //                        Log.d("POST_STATUS", response.body().getStatus());
+                        showStatus("successfully posted " + dataModels.get(0).getUSSDString(), 0);
                         if(dataModels.isEmpty()){
+                            showStatus("done processing all transactions, trying to fetch data from the web", 0);
                             getDataAPI();
                         }else{
 //                            dataModels.remove(0);
+                            dataModels.remove(0);
                             DataModelProcess(dataModels);
                         }
                     }
@@ -413,7 +445,7 @@ public class ListenForNewUSSDData extends Service {
                 //dismiss progress indicator
                 //show reason for failure
 //                Log.e("post_Retrofit_Error",t.getMessage());
-                postOrderForProcessing(screen_message, transaction_id, balance_before, balance_after, network, transaction_type);
+                postOrderForProcessing(screen_message, transaction_id, balance_before, balance_after, network, transaction_type, misformatted_balance_ussd);
             }
         });
     }
@@ -462,7 +494,8 @@ public class ListenForNewUSSDData extends Service {
                                                @Field("balance_before") String balance_before,
                                                @Field("balance_after") String balance_after,
                                                @Field("network") String network,
-                                               @Field("transaction_type") String transaction_type);
+                                               @Field("transaction_type") String transaction_type,
+                                               @Field("misformatted_balance_ussd") boolean misformatted_balance_ussd);
     }
 
     @Nullable
